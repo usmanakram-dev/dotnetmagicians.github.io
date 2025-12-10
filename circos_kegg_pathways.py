@@ -33,6 +33,12 @@ except ImportError as e:
     sys.exit(1)
 
 
+# Configuration constants
+GAP_DEGREES = 5  # Gap between sectors in degrees
+TEXT_ROTATION_ADJUSTMENT = 90  # Text rotation adjustment in degrees
+OUTPUT_DPI = 300  # Output image DPI
+
+
 def draw_bezier_curve(ax, start_angle, end_angle, radius, color, alpha=0.5):
     """Draw a Bezier curve connecting two points on the circle."""
     # Calculate start and end points
@@ -86,7 +92,7 @@ def main():
     n_pathways = len(pathways)
     
     # Calculate angles for each pathway sector
-    gap_angle = np.radians(5)  # 5 degree gap between sectors
+    gap_angle = np.radians(GAP_DEGREES)
     sector_angle = (2 * np.pi - n_pathways * gap_angle) / n_pathways
     
     # Create figure and axis
@@ -143,7 +149,7 @@ def main():
             ha = 'left'
         
         ax.text(label_x, label_y, f'{pathway_name}\n({gene})',
-                rotation=rotation - 90,
+                rotation=rotation - TEXT_ROTATION_ADJUSTMENT,
                 ha=ha, va='center',
                 fontsize=10, fontweight='bold',
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
@@ -168,7 +174,7 @@ def main():
     # Save the plot
     output_file = 'circos_kegg_pathways.png'
     print(f"Saving plot to {output_file}...")
-    plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.savefig(output_file, dpi=OUTPUT_DPI, bbox_inches='tight', facecolor='white')
     print(f"✓ Circos plot successfully saved to {output_file}")
     
     # Close the plot
