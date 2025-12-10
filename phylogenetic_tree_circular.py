@@ -86,26 +86,35 @@ def build_upgma_tree(distance_matrix, sample_names):
 
 def linkage_to_ete3(linkage_matrix, labels):
     """
-    Convert scipy linkage matrix to ete3 Tree object.
+    Convert scipy linkage matrix to ete3 Tree object with branch lengths.
     
     Args:
         linkage_matrix: Scipy linkage matrix
         labels: List of leaf labels
         
     Returns:
-        ete3.Tree: Converted tree
+        ete3.Tree: Converted tree with branch lengths
     """
     # Build tree from scipy linkage matrix
     scipy_tree = to_tree(linkage_matrix, rd=False)
     
-    # Convert to ete3 tree
+    # Convert to ete3 tree preserving branch lengths
     def build_ete3_tree(node, node_id):
         if node.is_leaf():
-            return Tree(name=labels[node_id])
+            ete_leaf = Tree(name=labels[node_id])
+            ete_leaf.dist = node.dist
+            return ete_leaf
         else:
             ete_node = Tree()
-            ete_node.add_child(build_ete3_tree(node.left, node.left.id))
-            ete_node.add_child(build_ete3_tree(node.right, node.right.id))
+            left_child = build_ete3_tree(node.left, node.left.id)
+            right_child = build_ete3_tree(node.right, node.right.id)
+            
+            # Set branch lengths for children
+            left_child.dist = node.dist - node.left.dist
+            right_child.dist = node.dist - node.right.dist
+            
+            ete_node.add_child(left_child)
+            ete_node.add_child(right_child)
             return ete_node
     
     return build_ete3_tree(scipy_tree, scipy_tree.id)
@@ -116,10 +125,10 @@ def get_leaf_color(sample_name, samples_dict):
     Determine leaf color based on rpoB mutation group.
     
     Color scheme:
-    - Blue: S450L (mutation at index 0)
-    - Red: S531L (mutation at index 3)
-    - Green: H526Y (mutation at index 5)
-    - Purple: D516V (mutation at index 6)
+    - Blue: S450L
+    - Red: S531L
+    - Green: H526Y
+    - Purple: D516V
     - Black: None of the above
     
     Args:
@@ -131,17 +140,24 @@ def get_leaf_color(sample_name, samples_dict):
     """
     vector = samples_dict[sample_name]
     
-    # Check for rpoB mutations
-    if vector[0] == 1:  # rpoB_S450L
-        return "blue"
-    elif vector[3] == 1:  # rpoB_S531L
-        return "red"
-    elif vector[5] == 1:  # rpoB_H526Y
-        return "green"
-    elif vector[6] == 1:  # rpoB_D516V
-        return "purple"
-    else:
-        return "black"
+    # Map mutation names to colors (dynamically find indices)
+    mutation_colors = {
+        "rpoB_S450L": "blue",
+        "rpoB_S531L": "red",
+        "rpoB_H526Y": "green",
+        "rpoB_D516V": "purple"
+    }
+    
+    # Check for rpoB mutations in priority order
+    for mutation_name, color in mutation_colors.items():
+        try:
+            idx = MUTATIONS.index(mutation_name)
+            if vector[idx] == 1:
+                return color
+        except ValueError:
+            continue
+    
+    return "black"
 
 
 def render_circular_tree(tree, samples_dict, output_file="phylogenetic_tree_circular.png"):
@@ -156,7 +172,7 @@ def render_circular_tree(tree, samples_dict, output_file="phylogenetic_tree_circ
     # Set up tree style
     ts = TreeStyle()
     ts.mode = "c"  # Circular mode
-    ts.show_leaf_name = True
+    ts.show_leaf_name = False  # We'll add custom colored labels
     ts.show_branch_length = False
     ts.show_branch_support = False
     ts.arc_start = 0
